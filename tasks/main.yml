@@ -1,0 +1,32 @@
+- name: create config folder
+  shell: mkdir -p /data/confs/supervisord
+
+- name: create supervisord log
+  shell: mkdir -p /data/logs/supervisor
+
+- name: copy supervisord config
+  template:
+    src: queue.j2
+    dest: /data/confs/supervisord/{{ domain }}.ini
+
+- name: call python3
+  shell: rm -rf /usr/bin/python && ln -s /usr/bin/python3 /usr/bin/python
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version|int == 7
+
+- name: create supervisord service
+  community.docker.docker_container:
+    name: queue
+    image: registry.yunzmall.com/yunzhong/shop:queue
+    detach: yes
+    restart_policy: always
+    networks:
+      - name: yzshop
+    network_mode: yzshop
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /data/logs/supervisor:/var/log/supervisor
+      - "{{ webpath }}:/data/wwwroot/yzshop:rw"
+
+- name: recovery python2
+  shell: rm -rf /usr/bin/python && ln -s /usr/bin/python2 /usr/bin/python
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version|int == 7
